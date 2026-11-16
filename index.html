@@ -1421,15 +1421,13 @@ body.lay-edit .c-now,body.lay-edit .c-cal{opacity:.35; filter:grayscale(.4); poi
 <div id="ttDlg" class="dlg-wrap" hidden>
   <div class="sheet-dlg tt-dlg" role="dialog" aria-modal="true" aria-labelledby="ttTitle">
     <div class="roster-head"><span id="ttTitle">시간표 PDF로 넣기</span><span class="sp"></span><button class="mini" id="ttClose" type="button">닫기</button></div>
-    <p class="st-help">나이스에서 내려받은 <b>교육과정 연간지도계획</b> PDF를 고르면, 날짜마다 1교시부터 차례로 공부할 내용을 채워요. 아침활동과 점심시간은 시정표를 보고 건너뛰어요. 파일은 이 컴퓨터 안에서만 읽고 어디로도 보내지 않아요.</p>
+    <p class="st-help">나이스에서 내려받은 <b>교육과정 연간지도계획</b> PDF를 고르면, 날짜마다 1교시부터 차례로 과목을 채워요. 아침활동과 점심시간은 시정표를 보고 건너뛰어요. 파일은 이 컴퓨터 안에서만 읽고 어디로도 보내지 않아요.</p>
     <div class="tt-top">
       <label class="b go tt-file">PDF 고르기<input type="file" id="ttFile" accept="application/pdf,.pdf" hidden></label>
       <span class="tt-name" id="ttName">아직 고른 파일이 없어요</span>
     </div>
     <div class="tt-opts">
-      <span class="tt-lab">넣을 내용</span>
-      <label><input type="radio" name="ttMode" value="subj"> 과목만 <small>예) 국어</small></label>
-      <label><input type="radio" name="ttMode" value="topic" checked> 과목과 학습주제 <small>예) 국어 · 시를 읽고 장면 상상하기 -1-</small></label>
+      <span class="tt-lab">칸에는 과목 이름만 들어가요 <small>예) 국어, 수학, 슬기로운생활</small></span>
       <label class="tt-over"><input type="checkbox" id="ttOver"> 이미 적어 둔 칸도 바꾸기</label>
     </div>
     <div class="tt-sum" id="ttSum"></div>
@@ -4620,8 +4618,7 @@ async function ttPdfLib(){
   lib.GlobalWorkerOptions.workerSrc = base + 'pdf.worker.min.mjs';
   return TT_PDF = lib;
 }
-const ttMode = () => (document.querySelector('input[name="ttMode"]:checked') || {}).value || 'topic';
-const ttText = l => ttMode() === 'subj' || !l.topic ? l.subj : `${l.subj} · ${l.topic}`;
+const ttText = l => l.subj;   // 칸이 좁아 과목 이름만 넣음
 const ttPers = d => todayList(d.getDay()).filter(r => /교시/.test(r.n)).map(r => r.n);
 const ttDate = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d, 12); };
 // 날짜별로 넣을 내용 계산
@@ -4632,7 +4629,9 @@ function ttPlanOut(){
     const cells = TT.byDay[k].map((l, i) => {
       const n = pers[i], v = ttText(l);
       if (!n) return {n:'', v, st:'over'};                 // 시정표보다 수업이 많음
-      if (!over && (cur[n] || '').trim() && cur[n].trim() !== v) return {n, v:cur[n].trim(), st:'keep'};
+      const was = (cur[n] || '').trim();
+      // 전에 'PDF로 넣은 과목 · 학습주제'는 과목만으로 바꿔도 되는 칸으로 봄
+      if (!over && was && was !== v && !was.startsWith(v + ' · ')) return {n, v:was, st:'keep'};
       return {n, v, st:'new'};
     });
     out.push({k, d, cells});
@@ -4660,7 +4659,6 @@ function ttOpen(o){
 $('ttBtn').onclick = () => ttOpen(true);
 $('ttClose').onclick = () => ttOpen(false);
 $('ttDlg').addEventListener('click', e => { if (e.target === $('ttDlg')) ttOpen(false); });
-document.querySelectorAll('input[name="ttMode"]').forEach(r => r.onchange = ttRender);
 $('ttOver').onchange = ttRender;
 $('ttFile').onchange = async () => {
   const f = $('ttFile').files[0]; $('ttFile').value = '';
